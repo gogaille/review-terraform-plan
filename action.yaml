@@ -1,0 +1,61 @@
+name: Review terraform plan
+description: >
+  Run and cleanup terraform plan output, store it into an output to allow reviewing it.
+
+inputs:
+  terraform-environment:
+    description: >
+      Terraform environment, used to load corresponding var file named
+      <terraform-environment>.tfvars into the working directory.
+    required: true
+    default: "preproduction"
+  working-directory:
+    description: working directory
+    required: true
+    default: "."
+
+outputs:
+  plan-details:
+    description: >
+      Clean terraform plan, in HTML format, ready to integrate in a comment of
+      corresponding pull request.
+    value: ${{ steps.plan.outputs.plan-details }}
+
+runs:
+  using: "composite"
+  steps:
+    - id: plan
+      name: terraform plan for review
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        plan=$(terraform plan -lock=false -no-color -var-file=${{ inputs.terraform-environment }}.tfvars)
+        title=$(echo -e "$plan" | grep -e '^Plan:' | sed -E 's|Plan:||')
+        # remove plan noise
+        plan=$(
+          echo -e "$plan" | \
+          tail -n +$(
+            echo -e "$plan" | \
+            grep -nE 'Terraform will perform the following actions|No changes. Infrastructure is up-to-date' | \
+            cut -d':' -f1
+          )
+        )
+
+        message=$(printf "
+          <details>
+          <summary><b>Terraform plan:</b> %s %s</summary>
+
+          \`\`\`hcl
+          %s
+          \`\`\`
+
+          </details>
+        " "${title:-No changes. Infrastructure is up-to-date.}" "$(git rev-parse --short $GITHUB_SHA)" "$plan")
+
+        message="${message//'%'/'%25'}"
+        message="${message//$'\n'/'%0A'}"
+        message="${message//$'\r'/'%0D'}"
+
+        echo -e "$plan"
+        echo ""
+        echo ::set-output name=plan-details::"$message"
