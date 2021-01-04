@@ -29,9 +29,11 @@ runs:
       shell: bash
       working-directory: ${{ inputs.working-directory }}
       run: |
+        echo "🗺 terraform plan -lock=false -var-file=${{ inputs.terraform-environment }}.tfvars"
         plan=$(terraform plan -lock=false -no-color -var-file=${{ inputs.terraform-environment }}.tfvars)
         title=$(echo -e "$plan" | grep -e '^Plan:' | sed -E 's|Plan:||')
-        # remove plan noise
+        
+        echo "🧹 remove plan noise"
         plan=$(
           echo -e "$plan" | \
           tail -n +$(
@@ -41,6 +43,7 @@ runs:
           )
         )
 
+        echo "🎁 wrap plan into HTML"
         message=$(printf "
           <details>
           <summary><b>Terraform plan:</b> %s %s</summary>
@@ -56,6 +59,7 @@ runs:
         message="${message//$'\n'/'%0A'}"
         message="${message//$'\r'/'%0D'}"
 
+        echo "👨‍💻 display plan"
         echo -e "$plan"
         echo ""
         echo ::set-output name=plan-details::"$message"
