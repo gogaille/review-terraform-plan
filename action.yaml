@@ -1,4 +1,9 @@
 name: Review terraform plan
+
+branding:
+  icon: 'map'  
+  color: 'purple'
+
 description: >
   Run and cleanup terraform plan output, store it into an output to allow reviewing it.
 
@@ -31,8 +36,11 @@ runs:
       run: |
         echo "🗺 terraform plan -lock=false -var-file=${{ inputs.terraform-environment }}.tfvars"
         plan=$(terraform plan -lock=false -no-color -var-file=${{ inputs.terraform-environment }}.tfvars)
-        title=$(echo -e "$plan" | grep -e '^Plan:' | sed -E 's|Plan:||')
-        
+        title=$(
+          echo -e $(echo -e "$plan" | grep -e '^Plan:' || echo -e "") | \
+          sed -E 's|Plan:||'
+        )
+
         echo "🧹 remove plan noise"
         plan=$(
           echo -e "$plan" | \
