@@ -42,7 +42,7 @@ runs:
         )
 
         echo "🧹 remove plan noise"
-        echo $plan
+        echo -e $plan
         plan=$(
           echo -e "$plan" | \
           tail -n +$(
