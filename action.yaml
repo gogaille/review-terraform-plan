@@ -26,6 +26,11 @@ outputs:
       corresponding pull request.
     value: ${{ steps.plan.outputs.plan-details }}
 
+  output-plan-file:
+    description: >
+      Path of the plan file, to be used by the action "Apply terraform plan".
+    value: "/tmp/plan.tfplan"
+
 runs:
   using: "composite"
   steps:
@@ -34,8 +39,8 @@ runs:
       shell: bash
       working-directory: ${{ inputs.working-directory }}
       run: |
-        echo "🗺 terraform plan -lock=false -var-file=${{ inputs.terraform-environment }}.tfvars"
-        plan=$(terraform plan -lock=false -no-color -var-file=${{ inputs.terraform-environment }}.tfvars)
+        echo "🗺 terraform plan -lock=false -var-file=${{ inputs.terraform-environment }}.tfvars --out /tmp/plan.tfplan"
+        plan=$(terraform plan -lock=false -no-color -var-file=${{ inputs.terraform-environment }}.tfvars --out /tmp/plan.tfplan)
         title=$(
           echo -e $(echo -e "$plan" | grep -e '^Plan:' || echo -e "") | \
           sed -E 's|Plan:||'
