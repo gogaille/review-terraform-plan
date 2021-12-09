@@ -18,6 +18,11 @@ inputs:
     description: working directory
     required: true
     default: "."
+  terraform-plan-output:
+    description: >
+      Path of the plan file, to be used by the action "Apply terraform plan".
+    default: "/tmp/plan.tfplan"
+    required: false
 
 outputs:
   plan-details:
@@ -25,11 +30,6 @@ outputs:
       Clean terraform plan, in HTML format, ready to integrate in a comment of
       corresponding pull request.
     value: ${{ steps.plan.outputs.plan-details }}
-
-  output-plan-file:
-    description: >
-      Path of the plan file, to be used by the action "Apply terraform plan".
-    value: "/tmp/plan.tfplan"
 
 runs:
   using: "composite"
@@ -39,15 +39,15 @@ runs:
       shell: bash
       working-directory: ${{ inputs.working-directory }}
       run: |
-        echo "🗺 terraform plan -lock=false -var-file=${{ inputs.terraform-environment }}.tfvars --out /tmp/plan.tfplan"
-        plan=$(terraform plan -lock=false -no-color -var-file=${{ inputs.terraform-environment }}.tfvars --out /tmp/plan.tfplan)
+        echo "🗺 terraform plan -lock=false -var-file=${{ inputs.terraform-environment }}.tfvars --out ${{ inputs.terraform-plan-output }}"
+        plan=$(terraform plan -lock=false -no-color -var-file=${{ inputs.terraform-environment }}.tfvars --out ${{ inputs.terraform-plan-output }})
         title=$(
           echo -e $(echo -e "$plan" | grep -e '^Plan:' || echo -e "") | \
           sed -E 's|Plan:||'
         )
 
         echo "🧹 remove plan noise"
-        plan=$(
+        tf_plan=$(
           echo -e "$plan" | \
           tail -n +$(
             echo -e "$plan" | \
@@ -56,6 +56,15 @@ runs:
           )
         )
 
+        echo "📝 generate drift details"
+        drift=$(
+          echo -e "$plan" | \
+          tail -n +$(
+            echo -e "$plan" | \
+            grep -nE 'Terraform detected the following changes made outside of Terraform' | cut -d':' -f1 
+          ) | sed '1,/─────────────────────────────────────────────────────────────────────────────/!d' | head -n -2
+        )
+        
         echo "🎁 wrap plan into HTML"
         message=$(printf "
           <details>
@@ -66,13 +75,25 @@ runs:
           \`\`\`
 
           </details>
-        " "${title:-No changes. Infrastructure is up-to-date.}" "$(git rev-parse --short $GITHUB_SHA)" "$plan")
+        
+          <details>
+          <summary><b>Terraform drift:</b> %s</summary>
+
+          \`\`\`hcl
+          %s
+          \`\`\`
+
+          </details>
+        " "${title:-No changes. Infrastructure is up-to-date.}" "$(git rev-parse --short $GITHUB_SHA)" "$tf_plan" "$(git rev-parse --short $GITHUB_SHA)" "$drift")
 
         message="${message//'%'/'%25'}"
         message="${message//$'\n'/'%0A'}"
         message="${message//$'\r'/'%0D'}"
 
         echo "👨‍💻 display plan"
-        echo -e "$plan"
+        echo -e "$tf_plan"
+        echo "" 
+        echo "👨‍💻 display drift"
+        echo -e "$drift"
         echo ""
         echo ::set-output name=plan-details::"$message"
