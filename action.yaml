@@ -57,13 +57,20 @@ runs:
         )
 
         echo "📝 generate drift details"
-        drift=$(
-          echo -e "$plan" | \
-          tail -n +$(
+        driftSeparatorLineNumber=$(
             echo -e "$plan" | \
-            grep -nE 'Terraform detected the following changes made outside of Terraform' | cut -d':' -f1 
-          ) | sed '1,/─────────────────────────────────────────────────────────────────────────────/!d' | head -n -2
-        )
+            grep -nE 'Terraform detected the following changes made outside of Terraform' | cut -d':' -f1
+          ) || true
+
+        if [ -z "$driftSeparatorLineNumber" ]; then
+          echo "🚫 no drift detected"
+          drift=""
+        else
+          drift=$(
+            echo -e "$plan" | \
+            tail -n +$driftSeparatorLineNumber | sed '1,/─────────────────────────────────────────────────────────────────────────────/!d' | head -n -2
+          )
+        fi
         
         echo "🎁 wrap plan into HTML"
         message=$(printf "
