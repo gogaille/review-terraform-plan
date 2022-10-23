@@ -93,10 +93,6 @@ runs:
           </details>
         " "${title:-No changes. Infrastructure is up-to-date.}" "$(git rev-parse --short $GITHUB_SHA)" "$tf_plan" "$(git rev-parse --short $GITHUB_SHA)" "$drift")
 
-        message="${message//'%'/'%25'}"
-        message="${message//$'\n'/'%0A'}"
-        message="${message//$'\r'/'%0D'}"
-
         echo "👨‍💻 display plan"
         echo -e "$tf_plan"
         echo "" 
