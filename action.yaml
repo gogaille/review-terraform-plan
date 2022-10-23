@@ -103,4 +103,4 @@ runs:
         echo "👨‍💻 display drift"
         echo -e "$drift"
         echo ""
-        echo ::set-output name=plan-details::"$message"
+        echo "plan-details=$message" >> $GITHUB_OUTPUT
