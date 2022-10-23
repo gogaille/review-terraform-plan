@@ -103,4 +103,6 @@ runs:
         echo "👨‍💻 display drift"
         echo -e "$drift"
         echo ""
-        echo "plan-details=$message" >> $GITHUB_OUTPUT
+        echo 'plan-details<<EOF' >> $GITHUB_OUTPUT
+        echo "$message" >> $GITHUB_OUTPUT
+        echo 'EOF' >> $GITHUB_OUTPUT
